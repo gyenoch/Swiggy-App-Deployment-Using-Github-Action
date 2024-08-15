@@ -90,7 +90,7 @@ jobs:
         run: terraform destroy -auto-approve
         working-directory: ./Eks-terraform
 
-  deploy:
+  Deploy:
     needs: terraform
     if: github.event.inputs.destroy != 'true'  # Skip deploy if we're destroying
     runs-on: [self-hosted]
@@ -100,6 +100,9 @@ jobs:
 
       - name: Image scan with Trivy
         run: trivy image gyenoch/swiggy-clone:latest > trivyimagedeploy.txt
+
+      - name: Stop and Remove Container
+        run: docker stop swiggy-clone1 || true && docker rm swiggy-clone1
 
       - name: Deploy to container
         run: docker run -d --name swiggy-clone1 -p 3000:3000 gyenoch/swiggy-clone:latest
