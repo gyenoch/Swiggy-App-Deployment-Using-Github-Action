@@ -53,7 +53,7 @@ jobs:
       - name: Tag and push Docker image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: swiggy-clone  # Change to your ECR repository name
+          ECR_REPOSITORY: ${{ secrets.ECR_REPO }}  # Change to your ECR repository name
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker tag swiggy-clone:latest $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
@@ -137,3 +137,12 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: kubectl apply -f ./deployment-service.yml
+      
+      - name: Deploy Service Account
+        run: kubectl apply -f serviceaccount.yml
+
+      - name: Deploy Role 
+        run: kubectl apply -f role.yml
+
+      - name: Deploy RoleBinding
+        run: kubectl apply -f rolebinding.yml

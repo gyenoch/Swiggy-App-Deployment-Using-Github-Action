@@ -13,6 +13,7 @@ spec:
       labels:
         app: swiggy
     spec:
+      serviceAccountName: deployment-sa
       containers:
       - name: swiggy
         image: aakibkhan1212/swiggy-clone:latest

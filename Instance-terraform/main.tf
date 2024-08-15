@@ -1,4 +1,4 @@
-resource "aws_security_group" "my-ec2-sg" {
+resource "aws_security_group" "my-ec2" {
   name        = "Jenkins-Security Group"
   description = "Open 22,443,80,9000,3000"
 
