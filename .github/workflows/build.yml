@@ -62,28 +62,33 @@ jobs:
 
       - name: Initialize Terraform
         run: terraform init
+        working-directory: ./Eks-terraform
 
       - name: Validate Terraform
         run: terraform validate
+        working-directory: ./Eks-terraform
 
       - name: Plan Terraform
         id: plan
         run: terraform plan -out=tfplan
+        working-directory: ./Eks-terraform
 
       - name: Apply Terraform
         if: github.event.inputs.destroy != 'true' && github.ref == 'refs/heads/main'
         run: terraform apply -auto-approve tfplan
+        working-directory: ./Eks-terraform
 
       - name: Save Terraform Plan
         if: github.ref != 'refs/heads/main'
         uses: actions/upload-artifact@v3
         with:
           name: terraform-plan
-          path: tfplan
+          path: ./Eks-terraform/tfplan
 
       - name: Terraform Destroy
         if: github.event.inputs.destroy == 'true'
         run: terraform destroy -auto-approve
+        working-directory: ./Eks-terraform
 
   deploy:
     needs: terraform
