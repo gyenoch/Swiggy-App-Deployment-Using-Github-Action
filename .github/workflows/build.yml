@@ -97,7 +97,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        
+
       - name: Docker pull image
         run: docker pull gyenoch/swiggy-clone:latest
 
@@ -114,4 +114,8 @@ jobs:
         run: aws eks --region us-east-1 update-kubeconfig --name EKS_CLOUD
 
       - name: Deploy to Kubernetes
-        run: kubectl apply -f ./deployment-service.yml
+        run: aws eks --region ${{ secrets.AWS_REGION }} update-kubeconfig --name EKS_CLOUD
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          run: kubectl apply -f ./deployment-service.yml
