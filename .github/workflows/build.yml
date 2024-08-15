@@ -9,7 +9,7 @@ on:
       destroy:
         description: 'Destroy the EKS Cluster'
         required: false
-        default: 'false'
+        default: 'true'
 
 jobs:
   build:
@@ -138,11 +138,11 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: kubectl apply -f ./deployment-service.yml
       
-      - name: Deploy Service Account
-        run: kubectl apply -f serviceaccount.yml
+      # - name: Deploy Service Account
+      #   run: kubectl apply -f serviceaccount.yml
 
-      - name: Deploy Role 
-        run: kubectl apply -f role.yml
+      # - name: Deploy Role 
+      #   run: kubectl apply -f role.yml
 
-      - name: Deploy RoleBinding
-        run: kubectl apply -f rolebinding.yml
+      # - name: Deploy RoleBinding
+      #   run: kubectl apply -f rolebinding.yml
