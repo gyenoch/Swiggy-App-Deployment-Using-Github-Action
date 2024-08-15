@@ -1,45 +1,106 @@
-name: Build
+name: Build and Deploy to EKS
 
 on:
   push:
     branches:
-      - master
+      - main
+  workflow_dispatch:
+    inputs:
+      destroy:
+        description: 'Destroy the EKS Cluster'
+        required: false
+        default: 'false'
 
 jobs:
   build:
     name: Build
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - uses: sonarsource/sonarqube-scan-action@master
+          fetch-depth: 0  # Disable shallow clones for better SonarQube analysis
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@v1.0.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
       - name: NPM Install
         run: npm install
-        
+        #working-directory: ./frontend  # Adjust this if necessary
+
       - name: Docker build and push
         run: |
-          # Run commands to build and push Docker images
-          docker build -t swiggy-clone .
-          docker tag swiggy-clone aakibkhan1212/swiggy-clone:latest
-          docker login -u ${{ secrets.Dockerhub_username }} -p ${{ secrets.Dockerhub_token }}
-          docker push aakibkhan1212/swiggy-clone:latest
+          docker build --no-cache -t swiggy-clone .
+          docker tag swiggy-clone gyenoch/swiggy-clone:latest
+          echo "${{ secrets.Dockerhub_token }}" | docker login -u ${{ secrets.Dockerhub_username }} --password-stdin
+          docker push gyenoch/swiggy-clone:latest
         env:
-          DOCKER_CLI_ACI: 1
+          DOCKER_CLI_EXPERIMENTAL: enabled
+
+  terraform:
+    needs: build
+    name: Terraform Apply or Destroy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Initialize Terraform
+        run: terraform init
+
+      - name: Validate Terraform
+        run: terraform validate
+
+      - name: Plan Terraform
+        id: plan
+        run: terraform plan -out=tfplan
+
+      - name: Apply Terraform
+        if: github.event.inputs.destroy != 'true' && github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve tfplan
+
+      - name: Save Terraform Plan
+        if: github.ref != 'refs/heads/main'
+        uses: actions/upload-artifact@v3
+        with:
+          name: terraform-plan
+          path: tfplan
+
+      - name: Terraform Destroy
+        if: github.event.inputs.destroy == 'true'
+        run: terraform destroy -auto-approve
+
   deploy:
-   needs: build
-   runs-on: [self-hosted]
-   steps:
-      - name: docker pull image
-        run: docker pull aakibkhan1212/swiggy-clone:latest
-      - name: Image scan
-        run: trivy image aakibkhan1212/swiggy-clone:latest > trivyimagedeploy.txt
+    needs: terraform
+    if: github.event.inputs.destroy != 'true'  # Skip deploy if we're destroying
+    runs-on: [self-hosted]
+    steps:
+      - name: Docker pull image
+        run: docker pull gyenoch/swiggy-clone:latest
+
+      - name: Image scan with Trivy
+        run: trivy image gyenoch/swiggy-clone:latest > trivyimagedeploy.txt
+
       - name: Deploy to container
-        run: docker run -d --name swiggy-clone1 -p 3000:3000 aakibkhan1212/swiggy-clone:latest
+        run: docker run -d --name swiggy-clone1 -p 3000:3000 gyenoch/swiggy-clone:latest
+
       - name: Update kubeconfig
-        run: aws eks --region ap-south-1 update-kubeconfig --name EKS_CLOUD
-      - name: Deploy to kubernetes
+        run: aws eks --region us-east-1 update-kubeconfig --name EKS_CLOUD
+
+      - name: Deploy to Kubernetes
         run: kubectl apply -f deployment-service.yml
