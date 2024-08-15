@@ -57,7 +57,7 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker tag swiggy-clone:latest $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY/:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
   terraform:
     needs: build
